@@ -17,6 +17,10 @@ package com.intuit.ipp.compression;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.zip.DeflaterOutputStream;
+
+import mockit.Expectations;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -27,20 +31,20 @@ import com.intuit.ipp.util.Logger;
 public class DeflateCompressorTest {
 
 	private static final org.slf4j.Logger LOG = Logger.getLogger();
-	
+
 	@Test
 	public void testCompressAndDecompress()  throws CompressionException {
 		String data = "Hello World!";
 		DeflateCompressor compressor = new DeflateCompressor();
 		byte[] compressed = compressor.compress(data, null);
 		LOG.debug("Deflate compression : " + compressed);
-		
+
 		String decompressed = new String(((ByteArrayOutputStream)compressor.decompress(new ByteArrayInputStream(compressed))).toByteArray());
 		LOG.debug("Deflate decompression : " + decompressed);
-		
+
 		Assert.assertEquals(data, decompressed, "DeflateCompressor : Both the original data and compressed then decompressed data are not same.");
 	}
-	
+
 	@Test
 	public void testCompress() throws CompressionException {
 		String data = "Hello World!";
@@ -48,7 +52,7 @@ public class DeflateCompressorTest {
 		byte[] compressed = compressor.compress(data, null);
 		Assert.assertNotEquals(data, compressed, "DeflateCompressor : given data did not compress.");
 	}
-	
+
 	@Test
 	public void testCompress_null() throws CompressionException {
 		String data = null;
@@ -56,7 +60,29 @@ public class DeflateCompressorTest {
 		byte[] compressed = compressor.compress(data, null);
 		Assert.assertNull(compressed);
 	}
-	
+
+	@Test
+	public void testCompress_uploadFile() throws CompressionException {
+		String data = "Hello World!";
+		byte[] uploadFile = data.getBytes();
+		DeflateCompressor compressor = new DeflateCompressor();
+		byte[] compressed = compressor.compress(data, uploadFile);
+		Assert.assertNotEquals(null, compressed);
+	}
+
+	@Test(expectedExceptions = CompressionException.class)
+	public void testCompress_CompressionException() throws CompressionException, IOException {
+		final String data = "Hello World!";
+		final DeflaterOutputStream mockedStream = new DeflaterOutputStream(new ByteArrayOutputStream());
+		new Expectations(DeflaterOutputStream.class) {{
+			mockedStream.write(data.getBytes());
+			result = new IOException("IOException thrown");
+		}};
+
+		DeflateCompressor compressor = new DeflateCompressor();
+		compressor.compress(data, null);
+	}
+
 	@Test
 	public void testDecompress() throws CompressionException {
 		String data = "Hello World!";
@@ -65,7 +91,7 @@ public class DeflateCompressorTest {
 		String decompressed = new String(((ByteArrayOutputStream)compressor.decompress(new ByteArrayInputStream(compressed))).toByteArray());
 		Assert.assertEquals(data, decompressed, "DeflateCompressor : given data did not decompress.");
 	}
-	
+
 	@Test
 	public void testDecompress_invalid() {
 		boolean isException = false;

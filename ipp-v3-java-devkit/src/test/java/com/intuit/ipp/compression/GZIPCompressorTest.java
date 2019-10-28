@@ -17,7 +17,13 @@ package com.intuit.ipp.compression;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
 
+import mockit.Expectations;
+import mockit.Mocked;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -27,7 +33,7 @@ import com.intuit.ipp.util.Logger;
 public class GZIPCompressorTest {
 
 	private static final org.slf4j.Logger LOG = Logger.getLogger();
-	
+
 	@Test
 	public void testCompressAndDecompress() {
 		String data = "Hello World!";
@@ -35,16 +41,16 @@ public class GZIPCompressorTest {
 			GZIPCompressor compressor = new GZIPCompressor();
 			byte[] compressed = compressor.compress(data, null);
 			LOG.debug("GZIP compression : " + compressed);
-			
+
 			String decompressed = new String(((ByteArrayOutputStream)compressor.decompress(new ByteArrayInputStream(compressed))).toByteArray());
 			LOG.debug("GZIP decompression : " + decompressed);
-			
+
 			Assert.assertEquals(data, decompressed, "GZIPCompressor : Both the original data and compressed then decompressed data are not same.");
 		} catch (CompressionException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Test
 	public void testCompress() {
 		String data = "Hello World!";
@@ -56,7 +62,7 @@ public class GZIPCompressorTest {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Test
 	public void testCompress_null() {
 		String data = null;
@@ -68,7 +74,29 @@ public class GZIPCompressorTest {
 			e.printStackTrace();
 		}
 	}
-	
+
+	@Test
+	public void testCompress_uploadFile() throws CompressionException {
+		String data = "Hello World!";
+		byte[] uploadFile = data.getBytes();
+		GZIPCompressor compressor = new GZIPCompressor();
+		byte[] compressed = compressor.compress(data, uploadFile);
+		Assert.assertNotEquals(uploadFile, compressed);
+	}
+
+	@Test(expectedExceptions = CompressionException.class)
+	public void testCompress_CompressionException() throws CompressionException, IOException {
+		final String data = "Hello World!";
+		final DeflaterOutputStream mockedStream = new GZIPOutputStream(new ByteArrayOutputStream());
+		new Expectations(DeflaterOutputStream.class) {{
+			mockedStream.write(data.getBytes());
+			result = new IOException("IOException thrown");
+		}};
+
+		GZIPCompressor compressor = new GZIPCompressor();
+		compressor.compress(data, null);
+	}
+
 	@Test
 	public void testDecompress() {
 		String data = "Hello World!";
@@ -82,7 +110,7 @@ public class GZIPCompressorTest {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Test
 	public void testDecompress_invalid() {
 		boolean isException = false;
